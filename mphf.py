@@ -9,8 +9,10 @@ Gettys01_. It is **not** guarenteed to generate a *minimal* perfect hash,
 though by no means is it impossible. See for example:
 
 >>> phash = hash_parameters('+-<>[].,', to_int=ord)
-HashInfo(t=8, r=(0, 1, 4, 5, 0, 0, 0, 0), offset=-43, to_int=ord)
-
+>>> len(phash.slots)
+8
+>>> phash.slots
+('+', ',', '-', '<', '.', '[', '>', ']')
 
 .. _Gettys01: http://www.drdobbs.com/architecture-and-design/generating-perfect-hash-functions/184404506
 
@@ -21,20 +23,18 @@ import math
 import collections
 import heapq
 
-# TODO: MAKE THIS UNNECESSARY.
-from operator import itemgetter
-# TODO: GET RID OF pprint!
-from pprint import pprint
-
 HashInfo = collections.namedtuple('HashInfo', 't slots r offset to_int')
 
+def __identity(x):
+    return x
 
 def hash_parameters(keys, minimize=True, to_int=None):
     """
     Calculates the parameters for a perfect hash. The result is returned as a
     HashInfo tuple which has the following fields:
 
-        t       -- table parameters
+        t       -- table parameter. In practice, this means the maximum size
+                   of the output
         slots   -- the output slots in the domain
         r       -- displacement vector
         offset  -- the amount by which to offset all values (once converted to
@@ -45,15 +45,22 @@ def hash_parameters(keys, minimize=True, to_int=None):
     HashInfo(t=3, slots=(1, 5, 7), r=(None, 0, 0), offset=0, to_int=None)
 
     >>> hash_parameters([1, 5, 7])
-    HashInfo(t=3, slots=(0, 4, 6), r=(0, 0, None), offset=-1, to_int=None)
+    HashInfo(t=3, slots=(1, 5, 7), r=(0, 0, None), offset=-1, to_int=None)
 
+    >>> l = (0, 3, 4, 7 ,10, 13, 15, 18, 19, 21, 22, 24, 26, 29, 30, 34)
+    >>> phash = hash_parameters(l)
+    >>> phash.slots
+    (0, 26, 29, 18, 24, 30, 4, 10, 22, 34, 7, 13, 19, 3, 15, 21)
     """
 
-    # TODO: Support `to_int`
-    # TODO: Store *original* values along side internal integers.
+    # If to_int is not assigned, simply use the identity function.
+    if to_int is None:
+        to_int = __identity
+
+    key_to_original = {to_int(original): original for original in keys}
 
     # Create a set of all items to be hashed.
-    items = frozenset(keys)
+    items = key_to_original.keys()
 
     if minimize:
         offset = 0 - min(items)
@@ -61,10 +68,10 @@ def hash_parameters(keys, minimize=True, to_int=None):
     else:
         offset = 0
 
-    # 1. Start with a square array (not stored) that is t units on a side.
-    # Choose a t such that t*t >= max(S)
-    t = int(math.ceil(math.sqrt(max(items))))
-    assert t * t >= max(items)
+    # 1. Start with a square array (not stored) that is t units on each side.
+    # Choose a t such that t * t >= max(S)
+    t = choose_best_t(items)
+    assert t * t >= max(items) and t * t >= len(items)
 
     # 2. Place each key K in the square at location (x,y), where
     # x = K/t, y = K mod t.
@@ -74,15 +81,25 @@ def hash_parameters(keys, minimize=True, to_int=None):
     # displacement vector.
     final_row, displacement_vector = arrange_rows(row_queue, t)
 
+    # Translate the internal keys to their original items.
+    slots = tuple(key_to_original[item - offset] for item in final_row
+            if item is not None)
+
     # Return the parameters
     return HashInfo(
         t=t,
-        slots=final_row,
+        slots=slots,
         r=displacement_vector,
         offset=offset,
-        # TODO: Provide this!
-        to_int=None
+        to_int=to_int if to_int is not __identity else None
     )
+
+def choose_best_t(items):
+    minimum_allowable = int(math.ceil(math.sqrt(max(items))))
+    if minimum_allowable ** 2 < len(items):
+        return len(items)
+    else:
+        return minimum_allowable
 
 
 def place_items_in_square(items, t):
@@ -134,7 +151,7 @@ def arrange_rows(row_queue, t):
     >>> rows = [(2, 1, [(0, 1), (1, 5)]), (3, 3, [(1, 7)])]
     >>> result, displacements = arrange_rows(rows, 4)
     >>> result
-    (1, 5, 7, None)
+    (1, 5, 7)
     >>> displacements
     (None, 0, None, 1)
 
@@ -147,26 +164,29 @@ def arrange_rows(row_queue, t):
     """
 
     # Create a set of all of the unoccupied columns.
-    unoccupied_columns = collections.OrderedDict((x, True) for x in xrange(t))
+    max_columns = t ** 2
+    unoccupied_columns = collections.OrderedDict((x, True)
+            for x in xrange(max_columns))
+
     # Create the resultant and displacement vectors.
-    result = [None] * t
+    result = [None] * max_columns
     displacements = [None] * t
 
     while row_queue:
         # Get the next row to place.
         _inverse_length, y, row = heapq.heappop(row_queue)
 
-        offset = find_first_fit(unoccupied_columns, row, t)
+        offset = find_first_fit(unoccupied_columns, row, max_columns)
         # Calculate the offset of the first item.
         first_item_x = row[0][0]
 
         displacements[y] = offset
         for x, item in row:
-            actual_x = x + offset
+            actual_x = (x + offset) % max_columns
             result[actual_x] = item
             del unoccupied_columns[actual_x]
 
-    return tuple(result), tuple(displacements)
+    return tuple(trim_nones_from_right(result)), tuple(displacements)
 
 
 def find_first_fit(unoccupied_columns, row, row_length):
@@ -231,7 +251,25 @@ def print_square(row_queue, t):
 
         print "|"
 
+def trim_nones_from_right(xs):
+    """
+    Returns the list without all the Nones at the right end.
+
+    >>> trim_nones_from_right([1, 2, None, 4, None, 5, None, None])
+    [1, 2, None, 4, None, 5]
+
+    """
+    # Find the first element that does not contain none.
+    for i, item in enumerate(reversed(xs)):
+        if item is not None:
+            break
+
+    return xs[:-i]
+
+
+
 if __name__ == '__main__':
     # TODO: Make this main more useful.
     import doctest
     doctest.testmod(verbose=False)
+
