@@ -1,53 +1,235 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-from pprint import pprint
-from math import sqrt, ceil
+"""
+Utilities for generating perfect hash functions for integer keys.
+
+This module implements the first fit decreasing method, described in
+Gettys01_. It is **not** guarenteed to generate a *minimal* perfect hash,
+though by no means is it impossible. See for example:
+
+>>> phash = hash_parameters('+-<>[].,', to_int=ord)
+HashInfo(t=8, r=(0, 1, 4, 5, 0, 0, 0, 0), offset=-43, to_int=ord)
+
+    
+.. _Gettys01: http://www.drdobbs.com/architecture-and-design/generating-perfect-hash-functions/184404506
+
+"""
+
+
+import math
+import collections
+import heapq
+
+# TODO: MAKE THIS UNNECESSARY.
 from operator import itemgetter
+# TODO: GET RID OF pprint!
+from pprint import pprint
 
-def make_hash(items, minimize=True):
-    """
-    Generates a minimal perfect hash function.
+HashInfo = collections.namedtuple('HashInfo', 't slots r offset to_int')
 
-    Based on first fit decreasing method:
-    http://www.drdobbs.com/architecture-and-design/generating-perfect-hash-functions/184404506
+def hash_parameters(keys, minimize=True, to_int=None):
     """
-    items = frozenset(items)
+    Calculates the parameters for a perfect hash. The result is returned as a
+    HashInfo tuple which has the following fields:
+
+        t       -- table parameters 
+        slots   -- the output slots in the domain
+        r       -- displacement vector
+        offset  -- the amount by which to offset all values (once converted to
+                   ints)
+        to_int  -- function to convert input to int (if given)
+
+    >>> hash_parameters([1, 5, 7], minimize=False)
+    HashInfo(t=3, slots=(1, 5, 7), r=(None, 0, 1), offset=0, to_int=None)
+
+    >>> hash_parameters([32, 1, 31, 6])
+    HashInfo(t=3, slots=(1, 5, 7), r=(None, 0, 1), offset=0, to_int=None)
+
+    """
+
+    # TODO: Support `to_int`
+    # TODO: Store *original* values along side internal integers.
+
+    # Create a set of all items to be hashed.
+    items = frozenset(keys)
 
     if minimize:
         offset = 0 - min(items)
         print "Minimize by %d" % offset
         items = frozenset(x + offset for x in items)
+    else:
+        offset = 0
 
-    # 1. Start with a square array that is t units on a side.
-    # Choose a t such that t**2 >= max(S)
-    t = int(ceil(sqrt(max(items))))
+    # 1. Start with a square array (not stored) that is t units on a side.
+    # Choose a t such that t*t >= max(S)
+    t = int(math.ceil(math.sqrt(max(items))))
     assert t*t >= max(items)
 
-    arr = square_array(t)
+    # 2. Place each key K in the square at location (x,y), where
+    # x = K/t, y = K mod t.
+    row_queue = place_items_in_square(items, t)
 
-    # 2. Place each key K in the square at location (x,y), where x=K/t, y=K mod t.
-    for item in items:
-        x = item / t
-        y = item % t
-        arr[x][y] = item
+    print_square(row_queue, t)
 
-    # 3. Rearrange rows and generate a displacement vector.
-    displacement_vector = rearrange_rows(arr)
-
-    print "Result of rearranging:"
-    print_array(arr)
-
-    # 4. Flatten the matrix into a row.
-    result = [choose_non_none(arr, i) for i in xrange(len(arr[0]))]
+    # 3. Arrange rows so that they'll fit into one row and generate a displacement vector.
+    final_row, displacement_vector = arrange_rows(row_queue, t)
 
     # Return the parameters
-    return {
-        't': t,
-        'r': displacement_vector,
-        'result': result,
-        'offset': offset
-    }
+    return HashInfo(
+        t=t,
+        slots=final_row,
+        r=displacement_vector,
+        offset=offset,
+        # TODO: Provide this!
+        to_int=None
+    )
+
+def place_items_in_square(items, t):
+    """
+    Returns a list of rows that are stored as a proiority queue to be used
+    with heapq functions. 
+
+    >>> place_items_in_square([1,5,7], 4)
+    [(2, 1, [(0, 1), (1, 5)]), (3, 3, [(1, 7)])]
+    >>> place_items_in_square([1,5,7], 3)
+    [(1, 1, [(0, 1), (2, 7)]), (2, 2, [(1, 5)])]
+    """
+
+    # A minheap (because that's all that heapq supports :/)
+    # of the length of each row. Why this is important is because
+    # we'll be popping the largest rows when figuring out row displacements.
+    # Each item is a tuple of (t - |row|, y, [(xpos_1, item_1), ...]).
+    # Until the call to heapq.heapify(), the rows are ordered in
+    # increasing row number (y).
+    rows = [(t, y, []) for y in xrange(t)]
+
+    for item in items:
+        # Calculate the cell the item should fall in.
+        x = item / t
+        y = item % t
+
+        # Push the item to its corresponding row...
+        inverse_length, _, row_contents = rows[y]
+        heapq.heappush(row_contents, (x, item))
+
+        # Ensure the heap key is kept intact.
+        rows[y] = inverse_length - 1, y, row_contents
+
+    assert all(inv_len == t - len(rows) for inv_len, _, rows in rows)
+
+    heapq.heapify(rows)
+
+    # Return only rows that are populated.
+    return [row for row in rows if row[2]]
+
+def arrange_rows(row_queue, t):
+    """
+    Takes a priority queue as generated by place_items_in_square().
+    Arranges the items from its conceputal square to one list. 
+    Returns both the resultant vector, plus the displacement vector, to be
+    used in the final output hash function.
+
+    >>> rows = [(2, 1, [(0, 1), (1, 5)]), (3, 3, [(1, 7)])]
+    >>> result, displacements = arrange_rows(rows, 4)
+    >>> result
+    (1, 5, 7, None)
+    >>> displacements
+    (None, 0, None, 1)
+
+    >>> rows = [(1, 1, [(0, 1), (2, 7)]), (2, 2, [(1, 5)])]
+    >>> result, displacements = arrange_rows(rows, 3)
+    >>> result
+    (1, 5, 7)
+    >>> displacements
+    (None, 0, 0)
+
+        
+    """
+
+    # Create a set of all of the unoccupied columns.
+    unoccupied_columns = collections.OrderedDict((x, True) for x in xrange(t))
+    # Create the resultant and displacement vectors.
+    result = [None] * t
+    displacements = [None] * t
+
+    while row_queue:
+        # Get the next row to place.
+        _inverse_length, y, row = heapq.heappop(row_queue)
+
+        offset = find_first_fit(unoccupied_columns, row, t)
+        # Calculate the offset of the first item.
+        first_item_x = row[0][0]
+
+        displacements[y] = offset
+        for x, item in row:
+            actual_x = x + offset
+            result[actual_x] = item
+            del unoccupied_columns[actual_x]
+        
+    return tuple(result), tuple(displacements)
+
+        
+
+def find_first_fit(unoccupied_columns, row, row_length):
+    """
+    Finds the first index that the row's items can fit.
+
+    """
+    for free_col in unoccupied_columns:
+        # The offset is that such that the first item goes in the free column.
+        first_item_x = row[0][0]
+        offset = free_col - first_item_x
+        if check_columns_fit(unoccupied_columns, row, offset, row_length):
+            return offset
+
+    raise ValueError("Row cannot possily fit in %r: %r"
+            % (unoccupied_columns.keys(), row))
+
+def check_columns_fit(unoccupied_columns, row, offset, row_length):
+    """
+    Checks if all the occupied columns in the row fit in the indices given by
+    free columns.
+
+    >>> check_columns_fit({0,1,2,3}, [(0, True), (2, True)], 0, 4)
+    True
+    >>> check_columns_fit({0,2,3}, [(2, True), (3, True)], 0, 4)
+    True
+    >>> check_columns_fit({}, [(2, True), (3, True)], 0, 4)
+    False
+    >>> check_columns_fit({0}, [(2, True)], 2, 4)
+    True
+    >>> check_columns_fit({0}, [(3, True)], 2, 4)
+    False
+
+    """
+    for index, item in row:
+        adjusted_index = (index + offset) % row_length
+
+        # Check if the index is in the appropriate place.
+        if adjusted_index not in unoccupied_columns:
+            return False
+
+    return True
+
+def print_square(row_queue, t):
+    occupied_rows = {y: row for _, y, row in row_queue}
+
+    empty_row = ', '.join('...' for _ in xrange(t))
+
+    for y in xrange(t):
+        print '|',
+        if y not in occupied_rows:
+            print empty_row,
+        else:
+            row = dict(occupied_rows[y])
+            all_cols = ('%3d' % row[x] if x in row else '...'
+                    for x in xrange(t))
+            print ', '.join(all_cols),
+
+        print "|"
+
+
 
 def print_array(array):
     for row in array:
@@ -250,9 +432,13 @@ def perfect_hash(c):
 
 
 if __name__ == '__main__':
+    import doctest
+    doctest.testmod(verbose=False)
     # TODO: Make this main more useful.
+    """
     items = (ord(c) for c in '+-<>[],.')
-    print make_hash(items, minimize=True)
+    print hash_parameters(items, minimize=True)
     print [chr(perfect_hash(c) + 43) for c in '<>+-[],.']
+    """
 
 
