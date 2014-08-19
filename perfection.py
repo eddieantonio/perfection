@@ -18,16 +18,17 @@ though by no means is it impossible. See for example:
 
 """
 
-
 import math
 import collections
 import heapq
 
+__all__ = ['hash_parameters', 'make_hash', 'make_dict']
+
+
 HashInfo = collections.namedtuple('HashInfo', 't slots r offset to_int')
 
 
-def __identity(x):
-    return x
+__identity = lambda x: x
 
 
 def hash_parameters(keys, minimize=True, to_int=None):
@@ -35,13 +36,29 @@ def hash_parameters(keys, minimize=True, to_int=None):
     Calculates the parameters for a perfect hash. The result is returned as a
     HashInfo tuple which has the following fields:
 
-        t       -- table parameter. In practice, this means the maximum size
-                   of the output
-        slots   -- the output slots in the domain
-        r       -- displacement vector
-        offset  -- the amount by which to offset all values (once converted to
-                   ints)
-        to_int  -- function to convert input to int (if given)
+    t
+       The "table parameter". This is the minimum side length of the table
+       used to create the hash. In practice, t**2 is the maximum size of the
+       output hash.
+    slots
+       The original inputs mapped to a vector. This is the hash function.
+    r
+       The displacement vector. This is the displacement of the given row in
+       the result vector. To find a given value, use ``x + r[y]``.
+    offset
+       The amount by which to offset all values (once converted to ints)
+    to_int
+       A function that converts the input to an int (if given).
+
+    Keyword parameters:
+
+    ``minimize``
+        Whether or not offset all integer keys internally by the minimum
+        value. This typically results in smaller output.
+    ``to_int``
+        A callable that converts the input keys to ints. If not specified, all
+        keys should be given as ints.
+
 
     >>> hash_parameters([1, 5, 7], minimize=False)
     HashInfo(t=3, slots=(1, 5, 7), r=(-1, -1, 1), offset=0, to_int=None)
@@ -127,7 +144,7 @@ def place_items_in_square(items, t):
     for item in items:
         # Calculate the cell the item should fall in.
         x = item % t
-        y = item / t
+        y = item // t
 
         # Push the item to its corresponding row...
         inverse_length, _, row_contents = rows[y]
@@ -274,7 +291,7 @@ def trim_nones_from_right(xs):
 def make_hash(keys, **kwargs):
     """
     Creates a perfect hash function from the given keys. For a description of
-    the keyword args see :py:func:`hash_parameters`.
+    the keyword arguments see :py:func:`hash_parameters`.
 
     >>> l = (0, 3, 4, 7 ,10, 13, 15, 18, 19, 21, 22, 24, 26, 29, 30, 34)
     >>> hf = make_hash(l)
@@ -282,9 +299,6 @@ def make_hash(keys, **kwargs):
     1
     >>> hash_parameters(l).slots[1]
     19
-
-    :py:func:
-
     """
     params = hash_parameters(keys, **kwargs)
 
@@ -299,10 +313,100 @@ def make_hash(keys, **kwargs):
         y = val / t
         return x + r[y]
 
+    # Undocumented properties, but used in make_dict()...
+    perfect_hash.length = len(params.slots)
+    perfect_hash.slots = params.slots
+
     return perfect_hash
 
 
-__all__ = ['hash_parameters', 'make_hash']
+def make_dict(name, keys, **kwargs):
+    """
+    Creates a dictionary-like mapping class that uses perfect hashing.
+    ``name`` is the proper class name of the returned class. See
+    ``hash_parameters()`` for documentation on all arguments after ``name``.
+
+    >>> MyDict = make_dict('MyDict', '+-<>[],.', to_int=ord)
+    >>> d = MyDict([('+', 1), ('-', 2)])
+    >>> d[','] = 3
+    >>> d
+    MyDict([('+', 1), (',', 3), ('-', 2)])
+    >>> del d['+']
+    >>> del d['.']
+    Traceback (most recent call last):
+    ...
+    KeyError: '.'
+    >>> len(d)
+    2
+    """
+
+    hash_func = make_hash(keys, **kwargs)
+
+    # Returns array index or ra
+    def index_or_key_error(key):
+        index = hash_func(key)
+        # Make sure the key is **exactly** the same.
+        if key != hash_func.slots[index]:
+            raise KeyError(key)
+        return index
+
+    def init(self, *args, **kwargs):
+        self._arr = [None] * hash_func.length
+        self._len = 0
+
+        # Delegate iniaitlization to update provided by MutableMapping:
+        self.update(*args, **kwargs)
+
+    def getitem(self, key):
+        index = index_or_key_error(key)
+        if self._arr[index] is None:
+            raise KeyError(key)
+        return self._arr[index][1]
+
+    def setitem(self, key, value):
+        index = index_or_key_error(key)
+        self._arr[index] = (key, value)
+
+    def delitem(self, key):
+        index = index_or_key_error(key)
+        if self._arr[index] is None:
+            raise KeyError(key)
+        self._arr[index] = None
+
+    def dict_iter(self):
+        return (pair[0] for pair in self._arr if pair is not None)
+
+    def dict_len(self):
+        # TODO: Make this O(1) using auxillary state?
+        return sum(1 for _ in self)
+
+    def dict_repr(self):
+        arr_repr = (repr(pair) for pair in self._arr if pair is not None)
+        return ''.join((name, '([', ', '.join(arr_repr), '])'))
+
+    # Create a docstring that at least describes where the class came from...
+    doc = """
+        Dictionary-like object that uses perfect hashing. This class was
+        generated by `%s.%s(%r, ...)`.
+        """ % (__name__, make_dict.__name__, name)
+
+    # Inheriting from MutableMapping gives us a whole whackload of methods for
+    # free.
+    bases = (collections.MutableMapping,)
+
+    return type(name, bases, {
+        '__init__': init,
+        '__doc__': doc,
+
+        '__getitem__': getitem,
+        '__setitem__': setitem,
+        '__delitem__': delitem,
+        '__iter__': dict_iter,
+        '__len__': dict_len,
+
+        '__repr__': dict_repr,
+    })
+
 
 if __name__ == '__main__':
     # TODO: Make this main more useful.
