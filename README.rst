@@ -1,6 +1,6 @@
-=====================================
-perfection -- Perfect hashing unities
-=====================================
+=======================================
+perfection — Perfect hashing utilities
+=======================================
 
 A module that creates perfect hash functions for a known set of integer
 inputs.

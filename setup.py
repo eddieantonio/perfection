@@ -19,5 +19,5 @@ setup(
         'Operating System :: OS Independent',
         'Programming Language :: Python',
     ],
-    download_url = 'https://github.com/eddieantonio/perfection/tarball/v1.0.1',
+    download_url = 'https://github.com/eddieantonio/perfection/tarball/v' + VERSION,
 )
