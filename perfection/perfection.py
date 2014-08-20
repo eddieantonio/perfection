@@ -56,8 +56,10 @@ def hash_parameters(keys, minimize=True, to_int=None):
     >>> phash.slots
     (18, 19, 0, 21, 22, 3, 4, 24, 7, 26, 30, 10, 29, 13, 34, 15)
 
-    >>> hash_parameters('Andrea', to_int=ord)
-    HashInfo()
+    For some values, the displacement vector will be rather empty:
+
+    >>> hash_parameters('Andrea', to_int=ord).r
+    (1, None, None, None, 0, -3, 4, None)
     """
 
     # If to_int is not assigned, simply use the identity function.
@@ -78,7 +80,7 @@ def hash_parameters(keys, minimize=True, to_int=None):
     # 1. Start with a square array (not stored) that is t units on each side.
     # Choose a t such that t * t >= max(S)
     t = choose_best_t(items)
-    assert t * t >= max(items) and t * t >= len(items)
+    assert t * t > max(items) and t * t >= len(items)
 
     # 2. Place each key K in the square at location (x,y), where
     # x = K mod t, y = K / t.
@@ -103,7 +105,7 @@ def hash_parameters(keys, minimize=True, to_int=None):
 
 
 def choose_best_t(items):
-    minimum_allowable = int(math.ceil(math.sqrt(max(items))))
+    minimum_allowable = int(math.sqrt(max(items)) + 1)
     if minimum_allowable ** 2 < len(items):
         return len(items)
     else:
@@ -200,7 +202,6 @@ def arrange_rows(row_queue, t):
 def find_first_fit(unoccupied_columns, row, row_length):
     """
     Finds the first index that the row's items can fit.
-
     """
     for free_col in unoccupied_columns:
         # The offset is that such that the first item goes in the free column.
