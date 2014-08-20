@@ -17,5 +17,5 @@ though by no means is it impossible. See for example:
 
 from .perfection import make_hash, make_dict, hash_parameters
 
-__version__ = '1.0.1'
+__version__ = '1.0.2'
 __all__ = ['make_hash', 'make_dict', 'hash_parameters']
