@@ -4,6 +4,7 @@
 import math
 import collections
 import heapq
+from array import array
 
 __all__ = ['hash_parameters', 'make_hash', 'make_dict']
 
@@ -46,10 +47,10 @@ def hash_parameters(keys, minimize=True, to_int=None):
 
 
     >>> hash_parameters([1, 5, 7], minimize=False)
-    HashInfo(t=3, slots=(1, 5, 7), r=(-1, -1, 1), offset=0, to_int=None)
+    HashInfo(t=3, slots=(1, 5, 7), r=array('b', [-1, -1, 1]), offset=0, to_int=None)
 
     >>> hash_parameters([1, 5, 7])
-    HashInfo(t=3, slots=(1, 5, 7), r=(0, 0, 2), offset=-1, to_int=None)
+    HashInfo(t=3, slots=(1, 5, 7), r=array('b', [0, 0, 2]), offset=-1, to_int=None)
 
     >>> l = (0, 3, 4, 7 ,10, 13, 15, 18, 19, 21, 22, 24, 26, 29, 30, 34)
     >>> phash = hash_parameters(l)
@@ -59,7 +60,7 @@ def hash_parameters(keys, minimize=True, to_int=None):
     For some values, the displacement vector will be rather empty:
 
     >>> hash_parameters('Andrea', to_int=ord).r
-    (1, None, None, None, 0, -3, 4, None)
+    array('b', [1, 0, 0, 0, 0, -3, 4, 0])
     """
 
     # If to_int is not assigned, simply use the identity function.
@@ -98,7 +99,7 @@ def hash_parameters(keys, minimize=True, to_int=None):
     return HashInfo(
         t=t,
         slots=slots,
-        r=displacement_vector,
+        r=array('b', displacement_vector),
         offset=offset,
         to_int=to_int if to_int is not __identity else None
     )
@@ -163,14 +164,14 @@ def arrange_rows(row_queue, t):
     >>> result
     (1, 5, 7)
     >>> displacements
-    (None, 0, None, 1)
+    (0, 0, 0, 1)
 
     >>> rows = [(1, 1, [(0, 1), (2, 7)]), (2, 2, [(1, 5)])]
     >>> result, displacements = arrange_rows(rows, 3)
     >>> result
     (1, 5, 7)
     >>> displacements
-    (None, 0, 0)
+    (0, 0, 0)
     """
 
     # Create a set of all of the unoccupied columns.
@@ -180,7 +181,7 @@ def arrange_rows(row_queue, t):
 
     # Create the resultant and displacement vectors.
     result = [None] * max_columns
-    displacements = [None] * t
+    displacements = [0] * t
 
     while row_queue:
         # Get the next row to place.
