@@ -6,7 +6,7 @@ do stuff.
 
 """
 
-import itertools
+import collections
 
 __all__ = ['InvariantError', 'ForestGraph']
 
@@ -42,19 +42,24 @@ class ForestGraph(object):
         "3" -- "4";
         "2" -- "3";
     }
+    >>> set(graph.neighbours(2)) == {1, 3}
+    True
+    >>> set(graph.neighbours(1)) == {2}
+    True
+    >>> set(graph.neighbours(3)) == {2, 4}
+    True
 
     """
 
     def __init__(self, vertices=(), edges=()):
-        self.vertices = set()
-        self.edges = set()
+        # Each vertex is associated with a list of its neighbouring vertices.
+        self._vertices = collections.defaultdict(set)
+
         # Components is a dictionary of vertex -> to the set of all vertices
         # that comprise that component. Note that all vertex of the same
         # component share the exactly the SAME set instance!
         self.components = {}
 
-        # Add all the original edges.
-        self.vertices.update(vertices)
         for edge in edges:
             self.add_edge(edge)
 
@@ -82,7 +87,9 @@ class ForestGraph(object):
         self.add_vertex(u)
         self.add_vertex(v)
 
-        self.edges.add(self.canonical_order(edge))
+        # Add the edges to each other.
+        self._vertices[u].add(v)
+        self._vertices[v].add(u)
 
         # Add all of the smaller components to the bigger one.
         smaller_component, bigger_component = self.sort_components(u, v)
@@ -96,11 +103,39 @@ class ForestGraph(object):
 
     def add_vertex(self, vertex):
         if vertex not in self.vertices:
-            self.vertices.add(vertex)
             self.components[vertex] = {vertex}
 
     def to_dot(self, *args, **kwargs):
         return graph_as_dot(self.vertices, self.edges, *args, **kwargs)
+
+    @property
+    def edges(self):
+        """
+        Edges of this graph, in canonical order.
+        """
+        canonical_edges = set()
+
+        for v1, neighbours in self._vertices.items():
+            for v2 in neighbours:
+                edge = self.canonical_order((v1, v2))
+                canonical_edges.add(edge)
+        return canonical_edges
+
+
+    @property
+    def vertices(self):
+        """Set of all vertices in the graph."""
+        return self._vertices.viewkeys()
+
+    def neighbours(self, vertex):
+        """
+        Yields all neighbours of the given vertex, in no particular
+        order.
+        """
+
+        return self._vertices[vertex]
+
+
 
     @staticmethod
     def canonical_order(edge):
