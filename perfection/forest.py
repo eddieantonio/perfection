@@ -33,11 +33,6 @@ class ForestGraph(object):
     False
     >>> print graph.to_dot()
     graph {
-        "1";
-        "2";
-        "3";
-        "4";
-    <BLANKLINE>
         "1" -- "2";
         "3" -- "4";
         "2" -- "3";
@@ -54,6 +49,9 @@ class ForestGraph(object):
     def __init__(self, vertices=(), edges=()):
         # Each vertex is associated with a list of its neighbouring vertices.
         self._vertices = collections.defaultdict(set)
+
+        # Each edge *may* be associated with an arbitrary value.
+        self._edges = {}
 
         # Components is a dictionary of vertex -> to the set of all vertices
         # that comprise that component. Note that all vertex of the same
@@ -102,11 +100,12 @@ class ForestGraph(object):
         return sorted((self.components[u], self.components[v]), key=len)
 
     def add_vertex(self, vertex):
-        if vertex not in self.vertices:
-            self.components[vertex] = {vertex}
+        # Make a new component for the vertex, if the vertex doesn't exist
+        # yet.
+        self.components.setdefault(vertex, {vertex})
 
     def to_dot(self, *args, **kwargs):
-        return graph_as_dot(self.vertices, self.edges, *args, **kwargs)
+        return graph_as_dot(self.edges, *args, **kwargs)
 
     @property
     def edges(self):
@@ -149,26 +148,32 @@ class ForestGraph(object):
 
 
 
-def graph_as_dot(vertex_set, edge_set, indentation=4):
+def graph_as_dot(edge_set, edge_labels={}, indentation=4):
     indent = ' ' * indentation
+    edge_tmpl = indent + '"{u}" -- "{v}"{label};'
 
     def sanitize(vertex):
         return '"%s"' % str(vertex).replace('"', r'\"')
 
+    def make_label(edge):
+        if edge not in edge_labels:
+            return ""
+
+        text = edge_labels[edge]
+        return "[label=%s]" % sanitize(text)
+
     def yield_lines():
         yield 'graph {'
-        for vertex in vertex_set:
-            yield indent + sanitize(vertex) + ';'
-
-        yield ''
 
         for edge in edge_set:
             u, v = edge
-            yield '%s%s -- %s;' % (indent, sanitize(u), sanitize(v))
+            label = make_label(edge)
+            yield edge_tmpl.format(**vars())
 
         yield '}'
 
     return '\n'.join(yield_lines())
+
 
 def print_example_graph():
     l = globals()
@@ -176,7 +181,6 @@ def print_example_graph():
         l[c] = c
     g = ForestGraph(edges=[(u, w), (w, x), (v,y)])
     print g.to_dot()
-
 
 if __name__ == '__main__':
     import sys

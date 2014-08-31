@@ -4,67 +4,150 @@ Use the Czech et al. method for generating minimal perfect hashes for strings.
 """
 
 import random
+import collections
+
 import forest
 
-def generate_random_table(words):
+
+
+HashInfo = collections.namedtuple('HashInfo', 't1 t2 g indices')
+
+
+def hash_parameters(words, minimize_indices=False):
     """
-    Generates random tables.
+    Gives hash parameters for the given set of words.
+
+    >>> info = hash_parameters('sun mon tue wed thu fri sat'.split())
+    >>> len(info.t1)
+    3
+    >>> len(info.t2)
+    3
+    >>> len(info.g)
+    21
     """
-    #r = lambda: random.randint(0, table_size -1)
-    #table_size = len(max(words, key=len))
-    feature_size = sum(len(w) for w in words)
-    #table = range(0, table_size)
-    table = range(0, feature_size)
+    # Ensure that we have an indexable sequence.
+    words = tuple(words)
+
+    # generate acyclic graph should... generate the tables...
+    graph, associations = generate_acyclic_graph(words)
+    g = assign(graph, associations)
+
+    return HashInfo(t1=(), t2=(), g=g, indices=None)
+
+
+def create_hash(words):
+    return
+
+
+def generate_random_table(words, n):
+    """
+    Generates random tables for given word lists.
+    """
+    table = range(0, n)
     random.shuffle(table)
     return table
-    #return tuple(tuple(r() for _ in xrange(len(word))) for word in words)
-    #return tuple(r() for _ in xrange(table_size))
 
 
-def generate_func(words):
-    table = generate_random_table(words)
-    #print table
-    max_length = len(max(words, key=len))
-    feature_size = sum(len(w) for w in words)
-    assert len(table) >= max_length
+def generate_func(words, n):
+    """
+    Generates a random table based mini-hashing function.
+    """
+    table = generate_random_table(words, n)
+
     def func(word):
-        return sum(x * ord(c) for x, c in zip(table, word)) % feature_size
+        return sum(x * ord(c) for x, c in zip(table, word)) % n
+
+    func.table = table
     return func
 
-def generate_and_try(words):
-    from operator import itemgetter
-    f1 = generate_func(words)
-    f2 = generate_func(words)
-    pairs = [((f1(word), f2(word)), word) for word in words]
-    edges = map(itemgetter(0), pairs)
+
+def generate_or_fail(words):
+    # TODO: Return the tables! 
+    # TODO: get the association step out of here!
+
+    # Hardcoded n = cm, where c = 3
+    # There might be a good way to choose an appropriate C,
+    # but [1] suggests the average amount of iterations needed
+    # to generate an acyclic graph is sqrt(3).
+    n = 3 * len(words)
+    f1 = generate_func(words, n)
+    f2 = generate_func(words, n)
+
+    edges = [(f1(word), f2(word)) for word in words]
+
+    # Try to generate that graph, mack!
     try:
         graph = forest.ForestGraph(edges=edges)
     except forest.InvariantError:
         return None
-    return graph, pairs
 
+    # Associate each edge with its corresponding word.
+    associations = {}
+    for num in xrange(len(words)):
+        edge = edges[num]
+        word = words[num]
+        associations[graph.canonical_order(edge)] = (num, word)
 
-if __name__ == '__main__':
-    words = ('program type const var procedure function '
-             'enum record array of '
-             'while for do goto '
-             'begin end').split()
+    return graph, associations
 
-    initial_message = "Generating trial: "
-    print initial_message,
+def generate_acyclic_graph(words):
+    """
+    Generates an acyclic graph for the given words.
+    Returns graph, and a list of edge-word associations.
+    """
 
     max_tries = len(words) ** 2
+
     for trial in xrange(max_tries):
-        print "\033[%dG\033[k" % len(initial_message),
-        print "\033[1m%d\033[m" % trial,
-        value = generate_and_try(words)
+        value = generate_or_fail(words)
         if value is None:
             continue
-        graph, pairs = value   
-        break
+        return value
 
+def assign(graph, associations):
+    # TODO: pass n to this as an argument
+    n = max(graph.vertices)
+
+    # Create an vector of empty assignments.
+    g = [None] * (n + 1)
+
+    # Assign all vertices.
+    for vertex in graph.vertices:
+        assert isinstance(vertex, int) and vertex <= n
+        # This vertex has already been assigned.
+        if g[vertex] is not None:
+            continue
+
+        g[vertex] = 0
+        assign_vertex(vertex, graph, associations, g)
+
+    return g
+
+def assign_vertex(vertex, graph, associations, g):
+    for neighbour in graph.neighbours(vertex):
+        if g[neighbour] is not None:
+            # This neighbour has already been assigned.
+            continue
+
+        # Get the associated edge number
+        edge = graph.canonical_order((vertex, neighbour))
+        num, _word = associations[edge]
+
+        # Assign this vertex such that
+        # h(word) == g(vertex) + g(neighbour)
+        g[neighbour] = num - g[vertex]
+        assign_vertex(neighbour, graph, associations, g)
+
+
+def do_example():
+    import keyword
+    words = keyword.kwlist
+
+    graph, associations = generate_acyclic_graph(words)
     print
-    print pairs
-    print graph.to_dot()
+    print graph.to_dot(edge_labels={
+        edge: '%d: %s' % assoc for edge, assoc in associations.items()
+    })
     
-
+if __name__ == '__main__':
+    do_example()
