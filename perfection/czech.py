@@ -8,7 +8,7 @@ import collections
 
 # Hmm...
 from . import forest
-from . import utils
+from .utils import create_dict_subclass
 
 
 __all__ = ['hash_parameters', 'make_hash', 'make_dict']
@@ -254,7 +254,7 @@ def make_dict(name, words, *args, **kwargs):
         """ % (__name__, make_dict.__name__, name)
 
     # Delegate to create_dict.
-    return utils.create_dict_subclass(name, info.hash_function, info.words, doc)
+    return create_dict_subclass(name, info.hash_function, info.words, doc)
 
 
 def to_hash_info(unknown):
