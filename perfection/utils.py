@@ -6,6 +6,7 @@ Shared utilities for perfect hash tools.
 
 import collections
 
+
 def create_dict_subclass(name, hash_func, slots, doc):
     """
     Creates a dict subclass named name, using the hash_function to index
@@ -74,5 +75,3 @@ def create_dict_subclass(name, hash_func, slots, doc):
 
         '__repr__': dict_repr,
     })
-
-

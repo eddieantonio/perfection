@@ -19,6 +19,7 @@ HashInfo = collections.namedtuple('HashInfo', _info_fields)
 
 
 class CzechHashBuilder(object):
+
     """
     A helper class that (iteratively) stores all data needed to create a Czech
     hash.
@@ -74,7 +75,6 @@ class CzechHashBuilder(object):
             return g[v1] + g[v2]
 
         return czech_hash
-
 
     # Algorithm steps.
 
@@ -181,6 +181,7 @@ class CzechHashBuilder(object):
 
 # API functions  ##############################################################
 
+
 def hash_parameters(words, minimize_indices=False):
     """
     Gives hash parameters for the given set of words.
@@ -231,7 +232,7 @@ def make_dict(name, words, *args, **kwargs):
     and deletions, however is slower than dict() in practice.
 
     >>> months = 'jan feb mar apr may jun jul aug sep oct nov dec'.split()
-    >>> MyDict = make_dict('MyDict', months) 
+    >>> MyDict = make_dict('MyDict', months)
     >>> d = MyDict(dec=21, feb=None, may='hello')
     >>> d['jul'] = False
     >>> d
@@ -276,7 +277,6 @@ def to_hash_info(unknown):
             return CreateCzechHash(unknown)
 
         return unknown
-
 
 
 def do_example():

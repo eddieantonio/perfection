@@ -2,6 +2,17 @@
 perfection — Perfect hashing utilities
 =======================================
 
+**BETA VERSION:**
+
+Can import a minimal perfect (ordered!) hash function with the same API
+using::
+
+    import perfection.czech
+
+API is not yet finalized!
+
+<hr>
+
 A module that creates perfect hash functions for a known set of integer
 inputs.
 
