@@ -6,7 +6,6 @@ Use the Czech et al. method for generating minimal perfect hashes for strings.
 import random
 import collections
 
-# Hmm...
 from . import forest
 from .utils import create_dict_subclass
 
@@ -25,11 +24,22 @@ class CzechHashBuilder(object):
     hash.
 
     The entire hash generation algorithm occurs in  __init__.
+
+    >>> duplicated_input = 'guacala'
+    >>> unique_len = len(set(duplicated_input))
+    >>> info = CzechHashBuilder(duplicated_input)
+    >>> 2 * unique_len <= info.n <= 3 * unique_len
+    True
+    >>> info.trials_taken <= info.n ** 0.5
+    True
+    >>> hf = info.hash_function
+    >>> [hf(x) for x in 'lacug']
+    [4, 2, 3, 1, 0]
     """
 
     def __init__(self, words, minimize=False):
         # Store the words as an immutable sequence.
-        self.words = tuple(words)
+        self.words = ordered_deduplicate(words)
 
         # TODO: Index minimization
         self.indices = range(len(words[0]))
@@ -42,7 +52,6 @@ class CzechHashBuilder(object):
         # Assignment step:
         #  - g
         self.assign()
-
         # Now hash_info will return the appropriate object.
 
     @property
@@ -65,8 +74,8 @@ class CzechHashBuilder(object):
         # that would ensure that a reference to this big, fat object
         # would be kept alive; hence, any hash function would carry
         # around all of the auxiliary state that was created during the
-        # creation of the hash parameters.  Omitting `self` ensures this
-        # object has a change to be garbage collected.
+        # generation of the hash parameters.  Omitting `self` ensures
+        # this object has a chance to be garbage collected.
         f1, f2, g = self.f1, self.f2, self.g
 
         def czech_hash(word):
@@ -81,7 +90,7 @@ class CzechHashBuilder(object):
     def generate_acyclic_graph(self):
         """
         Generates an acyclic graph for the given words.
-        Returns graph, and a list of edge-word associations.
+        Adds the graph, and a list of edge-word associations to the object.
         """
 
         # Maximum length of each table, respectively.
@@ -98,8 +107,12 @@ class CzechHashBuilder(object):
             except forest.InvariantError:
                 continue
             else:
+                # Generated successfully!
                 self.trials_taken = trial + 1
-                break
+                return
+
+        raise RuntimeError("Could not generate graph in "
+                           "{} tries".format(max_tries))
 
     def generate_random_table(self):
         """
@@ -152,6 +165,7 @@ class CzechHashBuilder(object):
 
     def assign(self):
         # Create an vector of empty assignments.
+        # **g is 1-indexed!**
         self.g = [None] * (self.n + 1)
 
         # Assign all vertices.
@@ -164,7 +178,7 @@ class CzechHashBuilder(object):
             self.g[vertex] = 0
             self.assign_vertex(vertex)
 
-    def assign_vertex(self, vertex,):
+    def assign_vertex(self, vertex):
         for neighbour in self.graph.neighbours(vertex):
             if self.g[neighbour] is not None:
                 # This neighbour has already been assigned.
@@ -179,8 +193,29 @@ class CzechHashBuilder(object):
             self.g[neighbour] = num - self.g[vertex]
             self.assign_vertex(neighbour)
 
-# API functions  ##############################################################
 
+def ordered_deduplicate(sequence):
+    """
+    Returns the sequence as a tuple with the duplicates removed,
+    preserving input order.  Any duplicates following the first
+    occurrence are removed.
+
+    >>> ordered_deduplicate([1, 2, 3, 1, 32, 1, 2])
+    (1, 2, 3, 32)
+
+    Based on recipe from this StackOverflow post:
+    http://stackoverflow.com/a/480227
+    """
+
+    seen = set()
+    # Micro optimization: each call to seen_add saves an extra attribute
+    # lookup in most iterations of the loop.
+    seen_add = seen.add
+
+    return tuple(x for x in sequence if not (x in seen or seen_add(x)))
+
+
+# API functions  ##############################################################
 
 def hash_parameters(words, minimize_indices=False):
     """
