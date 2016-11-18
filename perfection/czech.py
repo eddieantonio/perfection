@@ -29,10 +29,6 @@ class CzechHashBuilder(object):
     >>> duplicated_input = 'guacala'
     >>> unique_len = len(set(duplicated_input))
     >>> info = CzechHashBuilder(duplicated_input)
-    >>> 2 * unique_len <= info.n <= 3 * unique_len
-    True
-    >>> info.trials_taken <= info.n ** 0.5
-    True
     >>> hf = info.hash_function
     >>> [hf(x) for x in 'lacug']
     [4, 2, 3, 1, 0]
