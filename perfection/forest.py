@@ -21,14 +21,6 @@ class ForestGraph(object):
 
     >>> graph = ForestGraph(edges=[(1, 2), (2, 3)])
     >>> graph += (3, 4)
-    >>> graph += (4, 2)
-    Traceback (most recent call last):
-        ...
-    InvariantError: Adding (4, 2) would form a cycle
-    >>> graph += (5, 5)
-    Traceback (most recent call last):
-        ...
-    InvariantError: Cannot add loop: (5, 5)
     >>> 4 in graph.vertices
     True
     >>> 5 in graph.vertices
@@ -45,7 +37,6 @@ class ForestGraph(object):
     True
     >>> set(graph.neighbours(3)) == {2, 4}
     True
-
     """
 
     def __init__(self, vertices=(), edges=()):
