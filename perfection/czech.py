@@ -42,7 +42,7 @@ class CzechHashBuilder(object):
         self.words = ordered_deduplicate(words)
 
         # TODO: Index minimization
-        self.indices = range(len(words[0]))
+        self.indices = list(range(len(words[0])))
 
         # Each of the following steps add fields to `self`:
 
@@ -101,7 +101,7 @@ class CzechHashBuilder(object):
         self.n = 3 * len(self.words)
 
         max_tries = len(self.words) ** 2
-        for trial in xrange(max_tries):
+        for trial in range(max_tries):
             try:
                 self.generate_or_fail()
             except forest.InvariantError:
@@ -118,7 +118,7 @@ class CzechHashBuilder(object):
         """
         Generates random tables for given word lists.
         """
-        table = range(0, self.n)
+        table = list(range(0, self.n))
         random.shuffle(table)
         return table
 
@@ -141,7 +141,7 @@ class CzechHashBuilder(object):
 
         # Associate each edge with its corresponding word.
         associations = {}
-        for num in xrange(len(self.words)):
+        for num in range(len(self.words)):
             edge = edges[num]
             word = self.words[num]
             associations[graph.canonical_order(edge)] = (num, word)
@@ -320,10 +320,10 @@ def do_example():
 
     hb = CzechHashBuilder(words)
 
-    print '/*', hb.t1, hb.t2, hb.g, '*/'
-    print hb.graph.to_dot(edge_labels={
-        edge: '%d: %s' % assoc for edge, assoc in hb.associations.items()
-    })
+    print('/*', hb.t1, hb.t2, hb.g, '*/')
+    print(hb.graph.to_dot(edge_labels={
+        edge: '%d: %s' % assoc for edge, assoc in list(hb.associations.items())
+        }))
 
 
 if __name__ == '__main__':

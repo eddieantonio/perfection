@@ -114,7 +114,7 @@ class ForestGraph(object):
         """
         canonical_edges = set()
 
-        for v1, neighbours in self._vertices.items():
+        for v1, neighbours in list(self._vertices.items()):
             for v2 in neighbours:
                 edge = self.canonical_order((v1, v2))
                 canonical_edges.add(edge)
@@ -124,7 +124,7 @@ class ForestGraph(object):
     @property
     def vertices(self):
         """Set of all vertices in the graph."""
-        return self._vertices.viewkeys()
+        return self._vertices.keys()
 
     def neighbours(self, vertex):
         """
@@ -180,7 +180,7 @@ def print_example_graph():
     for c in 'uvwxy':
         l[c] = c
     g = ForestGraph(edges=[(u, w), (w, x), (v,y)])
-    print g.to_dot()
+    print(g.to_dot())
 
 if __name__ == '__main__':
     import sys
