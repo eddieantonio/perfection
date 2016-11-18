@@ -28,8 +28,8 @@ class ForestGraph(object):
     >>> print(graph.to_dot())
     graph {
         "1" -- "2";
-        "3" -- "4";
         "2" -- "3";
+        "3" -- "4";
     }
     >>> set(graph.neighbours(2)) == {1, 3}
     True
@@ -155,7 +155,7 @@ def graph_as_dot(edge_set, edge_labels=None, indentation=4):
     def yield_lines():
         yield 'graph {'
 
-        for edge in edge_set:
+        for edge in sorted(edge_set):
             u, v = edge
             label = make_label(edge)
             yield edge_tmpl.format(**vars())
