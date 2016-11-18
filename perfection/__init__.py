@@ -17,5 +17,5 @@ though by no means is it impossible. See for example:
 
 from .getty import make_hash, make_dict, hash_parameters
 
-__version__ = '2.0.0-beta'
+__version__ = '2.0.0'
 __all__ = ['make_hash', 'make_dict', 'hash_parameters']

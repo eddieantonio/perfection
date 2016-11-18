@@ -13,11 +13,12 @@ setup(
     packages=['perfection',],
     platforms='any',
     classifiers=[
-        'Development Status :: 4 - Beta',
+        'Development Status :: 5 - Production/Stable',
         'Intended Audience :: Developers',
         'License :: OSI Approved :: MIT License',
         'Operating System :: OS Independent',
         'Programming Language :: Python',
+        'Topic :: Software Development :: Libraries :: Python Modules'
     ],
     download_url = 'https://github.com/eddieantonio/perfection/tarball/v' + VERSION,
 )
