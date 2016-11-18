@@ -33,7 +33,7 @@ class ForestGraph(object):
     True
     >>> 5 in graph.vertices
     False
-    >>> print graph.to_dot()
+    >>> print(graph.to_dot())
     graph {
         "1" -- "2";
         "3" -- "4";
