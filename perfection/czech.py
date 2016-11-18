@@ -3,6 +3,8 @@
 Use the Czech et al. method for generating minimal perfect hashes for strings.
 """
 
+from __future__ import print_function
+
 import random
 import collections
 
@@ -247,12 +249,9 @@ def make_hash(words, *args, **kwargs):
     >>> hf('sun')
     0
     """
-
     # Use the hash builder proper, because HashInfo is assumed to not
     # have the precious f1, and f2 attributes.
-    info = CzechHashBuilder(words, *args, **kwargs)
-
-    return info.hash_function
+    return CzechHashBuilder(words, *args, **kwargs).hash_function
 
 
 def make_dict(name, words, *args, **kwargs):
@@ -298,20 +297,6 @@ def to_hash_info(unknown):
         # Unknown is a CzechHash.
         return unknown
     return HashInfo(unknown)
-
-    # Alternative method:
-    def _exception_based():
-        try:
-            (unknown.t1, unknown.t2, unknown.f1, unknown.f2, unknown.g)
-        except AttributeError:
-            return CreateCzechHash(unknown)
-        try:
-            for attr in ('t1', 't2', 'f1', 'f2', 'g'):
-                iter(getattr(unknown, attr))
-        except TypeError:
-            return CreateCzechHash(unknown)
-
-        return unknown
 
 
 def do_example():

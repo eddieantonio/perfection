@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 # coding: utf-8
 
+from __future__ import print_function
+
 import math
 import collections
 import heapq
@@ -11,7 +13,6 @@ __all__ = ['hash_parameters', 'make_hash', 'make_dict']
 
 
 HashInfo = collections.namedtuple('HashInfo', 't slots r offset to_int')
-
 
 __identity = lambda x: x
 
@@ -307,7 +308,6 @@ def make_hash(keys, **kwargs):
     # Undocumented properties, but used in make_dict()...
     perfect_hash.length = len(params.slots)
     perfect_hash.slots = params.slots
-
     return perfect_hash
 
 
@@ -331,7 +331,6 @@ def make_dict(name, keys, **kwargs):
     >>> len(d)
     2
     """
-
     hash_func = make_hash(keys, **kwargs)
     slots = hash_func.slots
 
