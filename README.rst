@@ -1,17 +1,9 @@
-=======================================
+***************************************
 perfection — Perfect hashing utilities
-=======================================
+***************************************
 
-**BETA VERSION:**
-
-Can import a minimal perfect (ordered!) hash function with the same API
-using::
-
-    import perfection.czech
-
-API is not yet finalized!
-
-<hr>
+.. image:: https://travis-ci.org/eddieantonio/perfection.svg?branch=master
+    :target: https://travis-ci.org/eddieantonio/perfection
 
 A module that creates perfect hash functions for a known set of integer
 inputs.
@@ -24,8 +16,17 @@ inputs.
     >>> hf(19)
     1
 
+
+Install
+-------
+
+::
+
+   pip install perfection
+
+
 Main features
-=============
+-------------
 
 - ``make_hash()`` that generates an honest-to-goodness perfect hash function
   for the given keys.
@@ -61,12 +62,25 @@ Note that ``div`` stands for *floor* (integer) division.
 
 .. _MutableMapping: https://docs.python.org/2/library/collections.html#collections.MutableMapping
 
+Beta Features
+-------------
+
+Can import a minimal perfect (ordered!) hash function with the same API
+using::
+
+    import perfection.czech
+
+API is not yet finalized!
+
+
 Credit
-======
+------
 
 Algorithm described by `Thomas Gettys`__.
 
-Python code © 2014 Eddie Antonio Santos. MIT licensed.
+Python code © 2014, 2016 Eddie Antonio Santos. MIT licensed.
+
+With contributions by Thomas Calmant.
 
 .. __: http://www.drdobbs.com/architecture-and-design/generating-perfect-hash-functions/184404506
 
