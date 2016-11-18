@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-from __future__ import print_function
+from __future__ import print_function, division
 
 import math
 import collections
@@ -302,7 +302,7 @@ def make_hash(keys, **kwargs):
     def perfect_hash(x):
         val = to_int(x) + offset
         x = val % t
-        y = val / t
+        y = val // t
         return x + r[y]
 
     # Undocumented properties, but used in make_dict()...
