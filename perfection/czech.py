@@ -3,14 +3,15 @@
 Use the Czech et al. method for generating minimal perfect hashes for strings.
 """
 
+from __future__ import print_function
+
 import random
 import collections
 
 from . import forest
 from .utils import create_dict_subclass
 
-
-__all__ = ['hash_parameters', 'make_hash', 'make_dict']
+__all__ = ['hash_parameters', 'make_hash', 'make_pickable_hash', 'make_dict']
 
 
 _info_fields = ('t1', 't2', 'g', 'indices')
@@ -42,7 +43,7 @@ class CzechHashBuilder(object):
         self.words = ordered_deduplicate(words)
 
         # TODO: Index minimization
-        self.indices = range(len(words[0]))
+        self.indices = list(range(len(words[0])))
 
         # Each of the following steps add fields to `self`:
 
@@ -101,7 +102,7 @@ class CzechHashBuilder(object):
         self.n = 3 * len(self.words)
 
         max_tries = len(self.words) ** 2
-        for trial in xrange(max_tries):
+        for trial in range(max_tries):
             try:
                 self.generate_or_fail()
             except forest.InvariantError:
@@ -118,7 +119,7 @@ class CzechHashBuilder(object):
         """
         Generates random tables for given word lists.
         """
-        table = range(0, self.n)
+        table = list(range(0, self.n))
         random.shuffle(table)
         return table
 
@@ -141,7 +142,7 @@ class CzechHashBuilder(object):
 
         # Associate each edge with its corresponding word.
         associations = {}
-        for num in xrange(len(self.words)):
+        for num in range(len(self.words)):
             edge = edges[num]
             word = self.words[num]
             associations[graph.canonical_order(edge)] = (num, word)
@@ -247,12 +248,44 @@ def make_hash(words, *args, **kwargs):
     >>> hf('sun')
     0
     """
-
     # Use the hash builder proper, because HashInfo is assumed to not
     # have the precious f1, and f2 attributes.
-    info = CzechHashBuilder(words, *args, **kwargs)
+    return CzechHashBuilder(words, *args, **kwargs).hash_function
 
-    return info.hash_function
+
+class PickableHash:
+    """
+    Provides a Hash function which can be transmitted using Spark
+    """
+    def __init__(self, hb):
+        assert isinstance(hb, CzechHashBuilder)
+        self.n = hb.n
+        self.g = hb.g
+        self.t1 = hb.t1
+        self.t2 = hb.t2
+
+    def __mini_hashing(self, word, table):
+        return sum(x * ord(c) for x, c in zip(table, word)) % self.n
+
+    def czech_hash(self, word):
+        v1 = self.__mini_hashing(word, self.t1)
+        v2 = self.__mini_hashing(word, self.t2)
+        return self.g[v1] + self.g[v2]
+
+
+def make_pickable_hash(words, *args, **kwargs):
+    """
+    Creates an ordered, minimal perfect hash function for the given sequence
+    of words.
+
+    >>> hf = make_pickable_hash(['sun', 'mon', 'tue', 'wed', 'thu',
+    ...                          'fri', 'sat'])
+    >>> hf('fri')
+    5
+    >>> hf('sun')
+    0
+    """
+    return PickableHash(CzechHashBuilder(words, *args, **kwargs)).czech_hash
 
 
 def make_dict(name, words, *args, **kwargs):
@@ -299,20 +332,6 @@ def to_hash_info(unknown):
         return unknown
     return HashInfo(unknown)
 
-    # Alternative method:
-    def _exception_based():
-        try:
-            (unknown.t1, unknown.t2, unknown.f1, unknown.f2, unknown.g)
-        except AttributeError:
-            return CreateCzechHash(unknown)
-        try:
-            for attr in ('t1', 't2', 'f1', 'f2', 'g'):
-                iter(getattr(unknown, attr))
-        except TypeError:
-            return CreateCzechHash(unknown)
-
-        return unknown
-
 
 def do_example():
     import keyword
@@ -320,10 +339,10 @@ def do_example():
 
     hb = CzechHashBuilder(words)
 
-    print '/*', hb.t1, hb.t2, hb.g, '*/'
-    print hb.graph.to_dot(edge_labels={
-        edge: '%d: %s' % assoc for edge, assoc in hb.associations.items()
-    })
+    print('/*', hb.t1, hb.t2, hb.g, '*/')
+    print(hb.graph.to_dot(edge_labels={
+        edge: '%d: %s' % assoc for edge, assoc in list(hb.associations.items())
+        }))
 
 
 if __name__ == '__main__':

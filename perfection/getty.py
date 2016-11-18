@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 # coding: utf-8
 
+from __future__ import print_function
+
 import math
 import collections
 import heapq
@@ -11,7 +13,6 @@ __all__ = ['hash_parameters', 'make_hash', 'make_dict']
 
 
 HashInfo = collections.namedtuple('HashInfo', 't slots r offset to_int')
-
 
 __identity = lambda x: x
 
@@ -71,7 +72,7 @@ def hash_parameters(keys, minimize=True, to_int=None):
     key_to_original = {to_int(original): original for original in keys}
 
     # Create a set of all items to be hashed.
-    items = key_to_original.keys()
+    items = list(key_to_original.keys())
 
     if minimize:
         offset = 0 - min(items)
@@ -131,7 +132,7 @@ def place_items_in_square(items, t):
     # Each item is a tuple of (t - |row|, y, [(xpos_1, item_1), ...]).
     # Until the call to heapq.heapify(), the rows are ordered in
     # increasing row number (y).
-    rows = [(t, y, []) for y in xrange(t)]
+    rows = [(t, y, []) for y in range(t)]
 
     for item in items:
         # Calculate the cell the item should fall in.
@@ -177,7 +178,7 @@ def arrange_rows(row_queue, t):
 
     # Create a set of all of the unoccupied columns.
     max_columns = t ** 2
-    cols = ((x, True) for x in xrange(max_columns))
+    cols = ((x, True) for x in range(max_columns))
     unoccupied_columns = collections.OrderedDict(cols)
 
     # Create the resultant and displacement vectors.
@@ -213,7 +214,7 @@ def find_first_fit(unoccupied_columns, row, row_length):
             return offset
 
     raise ValueError("Row cannot bossily fit in %r: %r"
-                     % (unoccupied_columns.keys(), row))
+                     % (list(unoccupied_columns.keys()), row))
 
 
 def check_columns_fit(unoccupied_columns, row, offset, row_length):
@@ -249,18 +250,18 @@ def print_square(row_queue, t):
     """
     occupied_rows = {y: row for _, y, row in row_queue}
 
-    empty_row = ', '.join('...' for _ in xrange(t))
-    for y in xrange(t):
-        print '|',
+    empty_row = ', '.join('...' for _ in range(t))
+    for y in range(t):
+        print('|', end=' ')
         if y not in occupied_rows:
-            print empty_row,
+            print(empty_row, end=' ')
         else:
             row = dict(occupied_rows[y])
             all_cols = ('%3d' % row[x] if x in row else '...'
-                        for x in xrange(t))
-            print ', '.join(all_cols),
+                        for x in range(t))
+            print(', '.join(all_cols), end=' ')
 
-        print "|"
+        print("|")
 
 
 def trim_nones_from_right(xs):
@@ -307,7 +308,6 @@ def make_hash(keys, **kwargs):
     # Undocumented properties, but used in make_dict()...
     perfect_hash.length = len(params.slots)
     perfect_hash.slots = params.slots
-
     return perfect_hash
 
 
@@ -331,7 +331,6 @@ def make_dict(name, keys, **kwargs):
     >>> len(d)
     2
     """
-
     hash_func = make_hash(keys, **kwargs)
     slots = hash_func.slots
 

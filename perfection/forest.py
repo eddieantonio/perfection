@@ -1,17 +1,19 @@
 #!/usr/bin/env python
-
 """
 Includes the ForestGraph, which is pretty much just intended to be used to ...
 do stuff.
-
 """
+
+from __future__ import print_function
 
 import collections
 
 __all__ = ['InvariantError', 'ForestGraph']
 
+
 class InvariantError(ValueError):
     pass
+
 
 class ForestGraph(object):
     """
@@ -113,28 +115,23 @@ class ForestGraph(object):
         Edges of this graph, in canonical order.
         """
         canonical_edges = set()
-
         for v1, neighbours in self._vertices.items():
             for v2 in neighbours:
                 edge = self.canonical_order((v1, v2))
                 canonical_edges.add(edge)
         return canonical_edges
 
-
     @property
     def vertices(self):
         """Set of all vertices in the graph."""
-        return self._vertices.viewkeys()
+        return self._vertices.keys()
 
     def neighbours(self, vertex):
         """
         Yields all neighbours of the given vertex, in no particular
         order.
         """
-
         return self._vertices[vertex]
-
-
 
     @staticmethod
     def canonical_order(edge):
@@ -147,8 +144,10 @@ class ForestGraph(object):
         return ''.join((cls_name, '(', args, ')'))
 
 
+def graph_as_dot(edge_set, edge_labels=None, indentation=4):
+    if not edge_labels:
+        edge_labels = {}
 
-def graph_as_dot(edge_set, edge_labels={}, indentation=4):
     indent = ' ' * indentation
     edge_tmpl = indent + '"{u}" -- "{v}"{label};'
 
@@ -180,7 +179,7 @@ def print_example_graph():
     for c in 'uvwxy':
         l[c] = c
     g = ForestGraph(edges=[(u, w), (w, x), (v,y)])
-    print g.to_dot()
+    print(g.to_dot())
 
 if __name__ == '__main__':
     import sys
