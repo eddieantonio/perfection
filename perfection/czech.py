@@ -11,8 +11,7 @@ import collections
 from . import forest
 from .utils import create_dict_subclass
 
-
-__all__ = ['hash_parameters', 'make_hash', 'make_dict']
+__all__ = ['hash_parameters', 'make_hash', 'make_pickable_hash', 'make_dict']
 
 
 _info_fields = ('t1', 't2', 'g', 'indices')
@@ -252,6 +251,41 @@ def make_hash(words, *args, **kwargs):
     # Use the hash builder proper, because HashInfo is assumed to not
     # have the precious f1, and f2 attributes.
     return CzechHashBuilder(words, *args, **kwargs).hash_function
+
+
+class PickableHash:
+    """
+    Provides a Hash function which can be transmitted using Spark
+    """
+    def __init__(self, hb):
+        assert isinstance(hb, CzechHashBuilder)
+        self.n = hb.n
+        self.g = hb.g
+        self.t1 = hb.t1
+        self.t2 = hb.t2
+
+    def __mini_hashing(self, word, table):
+        return sum(x * ord(c) for x, c in zip(table, word)) % self.n
+
+    def czech_hash(self, word):
+        v1 = self.__mini_hashing(word, self.t1)
+        v2 = self.__mini_hashing(word, self.t2)
+        return self.g[v1] + self.g[v2]
+
+
+def make_pickable_hash(words, *args, **kwargs):
+    """
+    Creates an ordered, minimal perfect hash function for the given sequence
+    of words.
+
+    >>> hf = make_pickable_hash(['sun', 'mon', 'tue', 'wed', 'thu',
+    ...                          'fri', 'sat'])
+    >>> hf('fri')
+    5
+    >>> hf('sun')
+    0
+    """
+    return PickableHash(CzechHashBuilder(words, *args, **kwargs)).czech_hash
 
 
 def make_dict(name, words, *args, **kwargs):
