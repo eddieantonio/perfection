@@ -9,7 +9,7 @@ setup(
     author='Eddie Antonio Santos',
     author_email='easantos@ualberta.ca',
     description='Perfect hashing utilities for Python',
-    long_description=open('README.rst').read(),
+    long_description=open('README.rst',encoding="UTF-8").read(),
     packages=['perfection',],
     platforms='any',
     classifiers=[
