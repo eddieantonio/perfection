@@ -1,6 +1,8 @@
 from distutils.core import setup
 from perfection import __version__ as VERSION
 
+from codecs import open
+
 setup(
     name='perfection',
     version=VERSION,
