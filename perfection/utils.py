@@ -4,7 +4,7 @@
 Shared utilities for perfect hash tools.
 """
 
-import collections
+import collections.abc
 
 
 def create_dict_subclass(name, hash_func, slots, doc):
@@ -57,21 +57,23 @@ def create_dict_subclass(name, hash_func, slots, doc):
 
     def dict_repr(self):
         arr_repr = (repr(pair) for pair in self._arr if pair is not None)
-        return ''.join((name, '([', ', '.join(arr_repr), '])'))
+        return "".join((name, "([", ", ".join(arr_repr), "])"))
 
     # Inheriting from MutableMapping gives us a whole whackload of methods for
     # free.
-    bases = (collections.MutableMapping,)
+    bases = (collections.abc.MutableMapping,)
 
-    return type(name, bases, {
-        '__init__': init,
-        '__doc__': doc,
-
-        '__getitem__': getitem,
-        '__setitem__': setitem,
-        '__delitem__': delitem,
-        '__iter__': dict_iter,
-        '__len__': dict_len,
-
-        '__repr__': dict_repr,
-    })
+    return type(
+        name,
+        bases,
+        {
+            "__init__": init,
+            "__doc__": doc,
+            "__getitem__": getitem,
+            "__setitem__": setitem,
+            "__delitem__": delitem,
+            "__iter__": dict_iter,
+            "__len__": dict_len,
+            "__repr__": dict_repr,
+        },
+    )
