@@ -4,7 +4,12 @@
 Shared utilities for perfect hash tools.
 """
 
-import collections.abc
+try:
+    # Python 3.3+
+    from collections.abc import MutableMapping
+except ImportError:
+    # Python 2.7/Python 3.x
+    from collections import MutableMapping
 
 
 def create_dict_subclass(name, hash_func, slots, doc):
@@ -61,7 +66,7 @@ def create_dict_subclass(name, hash_func, slots, doc):
 
     # Inheriting from MutableMapping gives us a whole whackload of methods for
     # free.
-    bases = (collections.abc.MutableMapping,)
+    bases = (MutableMapping,)
 
     return type(
         name,
