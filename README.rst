@@ -41,21 +41,27 @@ choice.
 
 For example, generate ``t`` and ``r`` parameters using ``hash_parameters()``::
 
+    >>> import perfection
+    >>>
     >>> l = (0, 3, 4, 7 ,10, 13, 15, 18, 19, 21, 22, 24, 26, 29, 30, 34)
-    >>> params = hash_parameters(l)
+    >>> params = perfection.hash_parameters(l)
     >>> params.t
     6
     >>> params.r
     (2, 7, 12, 0, 7, 10)
+    >>> params.offset
+    0
 
 Then, the hash function, in pseudocode is as follows::
 
      function hash(i):
+         static offset = 0
          static r = { 2, 7, 12, 0, 7, 10 }
          static t = 6
 
-         x = i mod t
-         y = i div t
+         val = i + offset
+         x = val mod t
+         y = val div t
          return x + r[y]
 
 Note that ``div`` stands for *floor* (integer) division.
